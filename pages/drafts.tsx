@@ -60,7 +60,7 @@ const Drafts: React.FC<Props> = (props) => {
             <style jsx>{`
                 .post { 
                     background: var(--geist-background);
-                    transition: box-shadow 0.2s ease-in;
+                    transition: box-shadow 0.1s ease-in;
                 }
 
                 .post:hover {

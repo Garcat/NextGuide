@@ -5,12 +5,19 @@ import Layout from "../../components/Layout"
 import { PostProps } from "../../components/Post"
 
 import prisma from "../../lib/prisma"
+import { useSession } from "next-auth/react"
+import Router from "next/router"
 
 export const getServerSideProps: GetServerSideProps = async ({ params }) => {
 
   const post = await prisma.post.findUnique({
     where: {
       id: String(params?.id),
+    },
+    include: {
+      author: {
+        select: { name: true, email: true },
+      },
     },
   });
   // const post1 = {
@@ -28,10 +35,31 @@ export const getServerSideProps: GetServerSideProps = async ({ params }) => {
   }
 }
 
+async function publishPost(id: String): Promise<void> {
+  await fetch(`/api/publish/${id}`, {
+    method: 'PUT',
+  })
+  await Router.push('/');
+}
+
+async function deletePost(id: String): Promise<void> {
+  await fetch(`/api/post/${id}`, {
+    method: 'DELETE',
+  })
+  await Router.push('/');
+}
+
 const Post: React.FC<PostProps> = (props) => {
+  const { data: session, status } = useSession();
+  if (status === 'loading') {
+    return <div>Authenticating ...</div>;
+  }
+
+  const userHasValidSession = Boolean(session);
+  const postBelongsToUser = session?.user?.email === props.author?.email;
   let title = props.title
   if (!props.published) {
-    title = `${title} (Draft)`
+    title = `${title} (Draft)`;
   }
 
   return (
@@ -40,10 +68,16 @@ const Post: React.FC<PostProps> = (props) => {
         <h2>{title}</h2>
         <p>By {props?.author?.name || "Unknown author"}</p>
         <ReactMarkdown children={props.content} />
+        { !props.published && userHasValidSession && postBelongsToUser && (
+          <button onClick={() => publishPost(props.id)}>Publish</button>
+        ) }
+        { userHasValidSession && postBelongsToUser && (
+          <button onClick={() => deletePost(props.id)}>Delete</button>
+        ) }
       </div>
       <style jsx>{`
         .page {
-          background: white;
+          background: var(--geist-background);
           padding: 2rem;
         }
 
@@ -66,4 +100,4 @@ const Post: React.FC<PostProps> = (props) => {
   )
 }
 
-export default Post
+export default Post;
